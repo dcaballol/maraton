@@ -5,6 +5,72 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import database as db
 
+# Exercise video links
+EXERCISE_VIDEOS = {
+    "hip thrust": "https://youtu.be/xDmFkJxPzeM",
+    "terminal knee extension": "https://youtu.be/9kFhxu1l6VU",
+    "split squat": "https://youtu.be/2C-uNgKwPLE",
+    "peso muerto rumano": "https://youtu.be/SHsUIZiNdeY",
+    "puente glúteo": "https://youtu.be/OUgsJ8-Vi0E",
+    "plancha": "https://youtu.be/pvIjsG5Svck",
+    "clamshells": "https://youtu.be/5LaHGgY3b3Q",
+    "monster walks": "https://youtu.be/KgdAqQbS4KA",
+    "fire hydrants": "https://youtu.be/SFICa-nJTEA",
+    "step-up": "https://youtu.be/dQqApCGd5Ss",
+    "copenhagen plank": "https://youtu.be/5kAPDJos3EI",
+    "vmo dips": "https://youtu.be/0rZIbC_u3sE",
+    "dead bug": "https://youtu.be/4XLEnwUr1d8",
+    "bird dog": "https://youtu.be/wiFNA3sqjCA",
+    "sentadilla": "https://youtu.be/ultWZbUMPL8",
+    "nordic": "https://youtu.be/J8ua0gG1PkU",
+    "pallof": "https://youtu.be/AH_QZLm_0-s",
+    "foam roller": "https://youtu.be/IqVF0hT4p7Y",
+    "elevación talones": "https://youtu.be/gwLzBJYoWlI",
+    "estocadas": "https://youtu.be/QOVaHwm-Q6U"
+}
+
+def format_workout_description(description):
+    """Format workout description with better structure and video links"""
+    
+    # Split by pipe
+    sections = description.split("|")
+    
+    formatted_html = '<div style="line-height: 1.8;">'
+    
+    for section in sections:
+        section = section.strip()
+        if not section:
+            continue
+        
+        # Section headers (PREVIO, Calent, etc.)
+        if any(section.upper().startswith(prefix) for prefix in ["PREVIO:", "CALENT:", "CORRECTIVO:", "ENFRIAMIENTO:", "ENFR:", "POST:"]):
+            header, content = section.split(":", 1) if ":" in section else (section, "")
+            formatted_html += f'<div style="margin-top: 15px;"><strong style="color: #1f4788;">🔹 {header.strip()}</strong><br>{content.strip()}</div>'
+        
+        # Exercise lines (start with number)
+        elif section and section[0].isdigit() and ")" in section:
+            # Extract exercise number and details
+            parts = section.split(")", 1)
+            exercise_num = parts[0].strip()
+            exercise_detail = parts[1].strip() if len(parts) > 1 else ""
+            
+            # Find video link
+            video_html = ""
+            for exercise_name, video_url in EXERCISE_VIDEOS.items():
+                if exercise_name in exercise_detail.lower():
+                    video_html = f' <a href="{video_url}" target="_blank" style="color: #ff4b4b; text-decoration: none;">📺 Video</a>'
+                    break
+            
+            formatted_html += f'<div style="margin: 10px 0; padding-left: 10px; border-left: 3px solid #e0e0e0;"><strong>{exercise_num})</strong> {exercise_detail}{video_html}</div>'
+        
+        # Regular content
+        else:
+            formatted_html += f'<div style="margin: 8px 0;">{section}</div>'
+    
+    formatted_html += '</div>'
+    
+    return formatted_html
+
 # Page config
 st.set_page_config(
     page_title="Maratón Training Tracker",
@@ -188,7 +254,10 @@ with tab1:
             col1, col2 = st.columns([2, 1])
             
             with col1:
-                st.markdown(f"**📝 Descripción:** {row['description']}")
+                # Format and display description
+                formatted_desc = format_workout_description(row['description'])
+                st.markdown("**📝 Descripción:**")
+                st.markdown(formatted_desc, unsafe_allow_html=True)
                 
                 if row['target_pace']:
                     st.markdown(f"**⏱️ Ritmo objetivo:** {row['target_pace']}")
