@@ -404,24 +404,38 @@ with tab1:
                             feeling = st.slider("Sensación (1-10)", 1, 10, 5, help="1=Muy pesado, 10=Excelente")
                         
                         # Show exercises from TODAY's plan
-                        if day_exercises:
+                        completed_exercises = []
+                        if day_exercises and len(day_exercises) > 0:
                             st.markdown(f"**Ejercicios del plan de hoy ({len(day_exercises)}):**")
-                            
-                            completed_exercises = []
                             
                             # Display checkboxes for actual exercises in groups of 2
                             for i in range(0, len(day_exercises), 2):
                                 cols = st.columns(2)
                                 for j, col in enumerate(cols):
-                                    if i + j < len(day_exercises):
-                                        exercise = day_exercises[i + j]
+                                    idx = i + j
+                                    if idx < len(day_exercises):
+                                        exercise = day_exercises[idx]
                                         with col:
-                                            if st.checkbox(f"✅ {exercise}", value=True, key=f"ex_{i+j}"):
+                                            # Use unique key combining date and exercise index
+                                            checkbox_key = f"ex_{row['date']}_{idx}"
+                                            if st.checkbox(f"✅ {exercise}", value=True, key=checkbox_key):
                                                 completed_exercises.append(exercise)
+                        else:
+                            # Fallback if no exercises extracted
+                            st.markdown("**Ejercicios principales:**")
+                            cols = st.columns(2)
+                            with cols[0]:
+                                if st.checkbox("✅ Hip Thrust", value=True, key=f"ht_{row['date']}"):
+                                    completed_exercises.append("Hip Thrust")
+                            with cols[1]:
+                                if st.checkbox("✅ Ejercicios completados", value=True, key=f"all_{row['date']}"):
+                                    completed_exercises.append("Todos los ejercicios")
                         
                         # Hip Thrust weight tracking (if in plan)
                         hip_kg = None
-                        if any("hip thrust" in ex.lower() for ex in day_exercises):
+                        if day_exercises and any("hip thrust" in ex.lower() for ex in day_exercises):
+                            hip_kg = st.number_input("💪 Peso Hip Thrust (kg)", value=25.0, step=0.5, min_value=0.0)
+                        elif not day_exercises or len(day_exercises) == 0:
                             hip_kg = st.number_input("💪 Peso Hip Thrust (kg)", value=25.0, step=0.5, min_value=0.0)
                         
                         st.markdown("**🦵 Rodilla:**")
@@ -429,7 +443,7 @@ with tab1:
                         with c5:
                             knee_pain = st.slider("Dolor rodilla (0-10)", 0, 10, 0)
                         with c6:
-                            foam_roll = st.checkbox("✅ Foam rolling IT band", value=True)
+                            foam_roll = st.checkbox("✅ Foam rolling IT band", value=True, key=f"foam_{row['date']}")
                         
                         notes = st.text_area("Notas", placeholder="Técnica, próxima carga, ajustes necesarios...")
                         
@@ -437,7 +451,9 @@ with tab1:
                         with col_submit:
                             if st.form_submit_button("💾 Guardar", type="primary"):
                                 # Build detailed notes
-                                detail = f"Completados: {', '.join(completed_exercises)}. "
+                                detail = ""
+                                if completed_exercises:
+                                    detail = f"Completados: {', '.join(completed_exercises)}. "
                                 if hip_kg:
                                     detail += f"Hip: {hip_kg}kg. "
                                 detail += f"Dolor: {knee_pain}/10. "
