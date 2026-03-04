@@ -5,29 +5,76 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import database as db
 
-# Exercise video links
+# Exercise video links - UPDATED AND VERIFIED
 EXERCISE_VIDEOS = {
     "hip thrust": "https://youtu.be/xDmFkJxPzeM",
-    "terminal knee extension": "https://youtu.be/9kFhxu1l6VU",
+    "terminal knee extension": "https://youtu.be/ciKjoG03WaQ",
+    "vmo": "https://youtu.be/ciKjoG03WaQ",
     "split squat": "https://youtu.be/2C-uNgKwPLE",
+    "sentadilla búlgara": "https://youtu.be/2C-uNgKwPLE",
     "peso muerto rumano": "https://youtu.be/SHsUIZiNdeY",
     "puente glúteo": "https://youtu.be/OUgsJ8-Vi0E",
-    "plancha": "https://youtu.be/pvIjsG5Svck",
+    "puente": "https://youtu.be/OUgsJ8-Vi0E",
+    "plancha": "https://youtu.be/ASdvN_XEl_c",
+    "rkc plancha": "https://youtu.be/ASdvN_XEl_c",
     "clamshells": "https://youtu.be/5LaHGgY3b3Q",
+    "clamshell": "https://youtu.be/5LaHGgY3b3Q",
     "monster walks": "https://youtu.be/KgdAqQbS4KA",
+    "monster walk": "https://youtu.be/KgdAqQbS4KA",
     "fire hydrants": "https://youtu.be/SFICa-nJTEA",
+    "fire hydrant": "https://youtu.be/SFICa-nJTEA",
     "step-up": "https://youtu.be/dQqApCGd5Ss",
-    "copenhagen plank": "https://youtu.be/5kAPDJos3EI",
+    "step up": "https://youtu.be/dQqApCGd5Ss",
+    "copenhagen plank": "https://youtu.be/hSvG7hDkguY",
+    "copenhagen": "https://youtu.be/hSvG7hDkguY",
     "vmo dips": "https://youtu.be/0rZIbC_u3sE",
-    "dead bug": "https://youtu.be/4XLEnwUr1d8",
+    "wall sit": "https://youtu.be/0rZIbC_u3sE",
+    "dead bug": "https://youtu.be/g_BYB0R-4Ws",
     "bird dog": "https://youtu.be/wiFNA3sqjCA",
-    "sentadilla": "https://youtu.be/ultWZbUMPL8",
+    "sentadilla": "https://youtu.be/gcNh17Ckjgg",
+    "squat": "https://youtu.be/gcNh17Ckjgg",
+    "sentadilla back": "https://youtu.be/gcNh17Ckjgg",
+    "sentadilla goblet": "https://youtu.be/MeIiIdhvXT4",
     "nordic": "https://youtu.be/J8ua0gG1PkU",
+    "nordic hamstring": "https://youtu.be/J8ua0gG1PkU",
+    "nordic curl": "https://youtu.be/J8ua0gG1PkU",
     "pallof": "https://youtu.be/AH_QZLm_0-s",
+    "pallof press": "https://youtu.be/AH_QZLm_0-s",
     "foam roller": "https://youtu.be/IqVF0hT4p7Y",
+    "foam rolling": "https://youtu.be/IqVF0hT4p7Y",
     "elevación talones": "https://youtu.be/gwLzBJYoWlI",
-    "estocadas": "https://youtu.be/QOVaHwm-Q6U"
+    "elevación": "https://youtu.be/gwLzBJYoWlI",
+    "estocadas": "https://youtu.be/QOVaHwm-Q6U",
+    "estocada": "https://youtu.be/QOVaHwm-Q6U",
+    "lunge": "https://youtu.be/QOVaHwm-Q6U",
+    "side-lying": "https://youtu.be/iPho4VXRHGk",
+    "hip abduction": "https://youtu.be/iPho4VXRHGk",
+    "pistol squat": "https://youtu.be/vq5-vdgJc0I",
+    "pistol": "https://youtu.be/vq5-vdgJc0I",
+    "suitcase carry": "https://youtu.be/VguuwOSW3YI",
+    "carry": "https://youtu.be/VguuwOSW3YI"
 }
+
+def extract_exercises_from_description(description):
+    """Extract exercise names from the workout description"""
+    exercises = []
+    sections = description.split("|")
+    
+    for section in sections:
+        section = section.strip()
+        # Look for numbered exercises (1), 2), etc.)
+        if section and section[0].isdigit() and ")" in section:
+            parts = section.split(")", 1)
+            if len(parts) > 1:
+                exercise_detail = parts[1].strip()
+                # Extract just the exercise name (before the first space or number)
+                exercise_name = exercise_detail.split()[0:3]  # First 3 words usually contain the exercise name
+                exercise_name = " ".join(exercise_name)
+                # Remove special characters and get clean name
+                clean_name = exercise_name.split("(")[0].split(" tempo")[0].split(" 4x")[0].split(" 3x")[0].strip()
+                exercises.append(clean_name)
+    
+    return exercises
 
 def format_workout_description(description):
     """Format workout description with better structure and video links"""
@@ -346,6 +393,9 @@ with tab1:
                 elif 'fuerza' in workout_type:
                     st.markdown("**💪 Registrar Fuerza:**")
                     
+                    # Extract exercises from this day's plan
+                    day_exercises = extract_exercises_from_description(row['description'])
+                    
                     with st.form(key=f"workout_form_{row['date']}"):
                         c1, c2 = st.columns(2)
                         with c1:
@@ -353,34 +403,49 @@ with tab1:
                         with c2:
                             feeling = st.slider("Sensación (1-10)", 1, 10, 5, help="1=Muy pesado, 10=Excelente")
                         
-                        st.markdown("**Ejercicios completados:**")
-                        c3, c4 = st.columns(2)
-                        with c3:
-                            hip_thrust = st.checkbox("✅ Hip Thrust", value=True)
-                            if hip_thrust:
-                                hip_kg = st.number_input("Peso (kg)", value=25.0, step=0.5)
-                        with c4:
-                            knee_ext = st.checkbox("✅ Terminal Knee Ext", value=True)
-                            split_squat = st.checkbox("✅ Split Squat", value=True)
+                        # Show exercises from TODAY's plan
+                        if day_exercises:
+                            st.markdown(f"**Ejercicios del plan de hoy ({len(day_exercises)}):**")
+                            
+                            completed_exercises = []
+                            
+                            # Display checkboxes for actual exercises in groups of 2
+                            for i in range(0, len(day_exercises), 2):
+                                cols = st.columns(2)
+                                for j, col in enumerate(cols):
+                                    if i + j < len(day_exercises):
+                                        exercise = day_exercises[i + j]
+                                        with col:
+                                            if st.checkbox(f"✅ {exercise}", value=True, key=f"ex_{i+j}"):
+                                                completed_exercises.append(exercise)
                         
-                        st.markdown("**Rodilla:**")
+                        # Hip Thrust weight tracking (if in plan)
+                        hip_kg = None
+                        if any("hip thrust" in ex.lower() for ex in day_exercises):
+                            hip_kg = st.number_input("💪 Peso Hip Thrust (kg)", value=25.0, step=0.5, min_value=0.0)
+                        
+                        st.markdown("**🦵 Rodilla:**")
                         c5, c6 = st.columns(2)
                         with c5:
                             knee_pain = st.slider("Dolor rodilla (0-10)", 0, 10, 0)
                         with c6:
                             foam_roll = st.checkbox("✅ Foam rolling IT band", value=True)
                         
-                        notes = st.text_area("Notas", placeholder="Técnica, próxima carga...")
+                        notes = st.text_area("Notas", placeholder="Técnica, próxima carga, ajustes necesarios...")
                         
                         col_submit, col_cancel = st.columns(2)
                         with col_submit:
                             if st.form_submit_button("💾 Guardar", type="primary"):
-                                detail = notes
-                                if hip_thrust:
-                                    detail = f"Hip: {hip_kg}kg. " + detail
-                                detail += f" Dolor: {knee_pain}/10."
-                                if not foam_roll:
-                                    detail += " ⚠️ Sin foam roll."
+                                # Build detailed notes
+                                detail = f"Completados: {', '.join(completed_exercises)}. "
+                                if hip_kg:
+                                    detail += f"Hip: {hip_kg}kg. "
+                                detail += f"Dolor: {knee_pain}/10. "
+                                if foam_roll:
+                                    detail += "Foam ✅. "
+                                else:
+                                    detail += "⚠️ Sin foam roll. "
+                                detail += notes
                                 
                                 db.add_workout(
                                     date=row['date'],
