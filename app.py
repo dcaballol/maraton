@@ -284,67 +284,171 @@ with tab1:
                         st.session_state[f'add_workout_{row["date"]}'] = True
                         st.rerun()
             
-            # Quick add workout form
+            # Quick add workout form - DIFFERENT FORMS BY TYPE
             if st.session_state.get(f'add_workout_{row["date"]}', False):
                 st.markdown("---")
-                st.markdown("**Registrar entrenamiento:**")
                 
-                with st.form(key=f"workout_form_{row['date']}"):
-                    c1, c2, c3 = st.columns(3)
+                workout_type = row['workout_type'].lower()
+                
+                # FORM 1: RUNNING/CARDIO
+                if any(word in workout_type for word in ['rodaje', 'carrera', 'intervalos', 'tempo', 'fartlek', 'ritmo']):
+                    st.markdown("**🏃‍♀️ Registrar Carrera:**")
                     
-                    with c1:
-                        actual_km = st.number_input("KM realizados", value=float(row['distance_km']), min_value=0.0, step=0.1)
-                    
-                    with c2:
-                        actual_min = st.number_input("Minutos", value=int(row['duration_min']), min_value=0, step=1)
-                    
-                    with c3:
-                        # Calculate pace
-                        if actual_km > 0 and actual_min > 0:
-                            pace_min = actual_min / actual_km
-                            pace_sec = (pace_min % 1) * 60
-                            default_pace = f"{int(pace_min)}:{int(pace_sec):02d}"
-                        else:
-                            default_pace = ""
+                    with st.form(key=f"workout_form_{row['date']}"):
+                        c1, c2, c3 = st.columns(3)
                         
-                        avg_pace = st.text_input("Ritmo promedio (min/km)", value=default_pace)
+                        with c1:
+                            actual_km = st.number_input("KM realizados", value=float(row['distance_km']), min_value=0.0, step=0.1)
+                        with c2:
+                            actual_min = st.number_input("Minutos", value=int(row['duration_min']), min_value=0, step=1)
+                        with c3:
+                            if actual_km > 0 and actual_min > 0:
+                                pace_min = actual_min / actual_km
+                                pace_sec = (pace_min % 1) * 60
+                                default_pace = f"{int(pace_min)}:{int(pace_sec):02d}"
+                            else:
+                                default_pace = ""
+                            avg_pace = st.text_input("Ritmo (min/km)", value=default_pace)
+                        
+                        c4, c5, c6 = st.columns(3)
+                        with c4:
+                            avg_hr = st.number_input("FC promedio (opcional)", value=0, min_value=0, max_value=220)
+                        with c5:
+                            max_hr = st.number_input("FC máxima (opcional)", value=0, min_value=0, max_value=220)
+                        with c6:
+                            feeling = st.slider("Sensación (1-10)", 1, 10, 5, help="1=Muy mal, 10=Excelente")
+                        
+                        notes = st.text_area("Notas", placeholder="Ej: Ratio 4:1, gel KM 10, dolor rodilla 2/10...")
+                        
+                        col_submit, col_cancel = st.columns(2)
+                        with col_submit:
+                            if st.form_submit_button("💾 Guardar", type="primary"):
+                                db.add_workout(
+                                    date=row['date'],
+                                    workout_type=row['workout_type'],
+                                    distance_km=actual_km,
+                                    duration_min=actual_min,
+                                    avg_pace=avg_pace,
+                                    avg_hr=avg_hr if avg_hr > 0 else None,
+                                    max_hr=max_hr if max_hr > 0 else None,
+                                    feeling=feeling,
+                                    notes=notes
+                                )
+                                st.session_state[f'add_workout_{row["date"]}'] = False
+                                st.success("✅ Carrera guardada!")
+                                st.rerun()
+                        with col_cancel:
+                            if st.form_submit_button("❌ Cancelar"):
+                                st.session_state[f'add_workout_{row["date"]}'] = False
+                                st.rerun()
+                
+                # FORM 2: STRENGTH
+                elif 'fuerza' in workout_type:
+                    st.markdown("**💪 Registrar Fuerza:**")
                     
-                    c4, c5, c6 = st.columns(3)
+                    with st.form(key=f"workout_form_{row['date']}"):
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            actual_min = st.number_input("Duración (min)", value=int(row['duration_min']), min_value=0, step=5)
+                        with c2:
+                            feeling = st.slider("Sensación (1-10)", 1, 10, 5, help="1=Muy pesado, 10=Excelente")
+                        
+                        st.markdown("**Ejercicios completados:**")
+                        c3, c4 = st.columns(2)
+                        with c3:
+                            hip_thrust = st.checkbox("✅ Hip Thrust", value=True)
+                            if hip_thrust:
+                                hip_kg = st.number_input("Peso (kg)", value=25.0, step=0.5)
+                        with c4:
+                            knee_ext = st.checkbox("✅ Terminal Knee Ext", value=True)
+                            split_squat = st.checkbox("✅ Split Squat", value=True)
+                        
+                        st.markdown("**Rodilla:**")
+                        c5, c6 = st.columns(2)
+                        with c5:
+                            knee_pain = st.slider("Dolor rodilla (0-10)", 0, 10, 0)
+                        with c6:
+                            foam_roll = st.checkbox("✅ Foam rolling IT band", value=True)
+                        
+                        notes = st.text_area("Notas", placeholder="Técnica, próxima carga...")
+                        
+                        col_submit, col_cancel = st.columns(2)
+                        with col_submit:
+                            if st.form_submit_button("💾 Guardar", type="primary"):
+                                detail = notes
+                                if hip_thrust:
+                                    detail = f"Hip: {hip_kg}kg. " + detail
+                                detail += f" Dolor: {knee_pain}/10."
+                                if not foam_roll:
+                                    detail += " ⚠️ Sin foam roll."
+                                
+                                db.add_workout(
+                                    date=row['date'],
+                                    workout_type=row['workout_type'],
+                                    distance_km=0,
+                                    duration_min=actual_min,
+                                    avg_pace=None,
+                                    avg_hr=None,
+                                    max_hr=None,
+                                    feeling=feeling,
+                                    notes=detail
+                                )
+                                st.session_state[f'add_workout_{row["date"]}'] = False
+                                st.success("✅ Fuerza guardada!")
+                                st.rerun()
+                        with col_cancel:
+                            if st.form_submit_button("❌ Cancelar"):
+                                st.session_state[f'add_workout_{row["date"]}'] = False
+                                st.rerun()
+                
+                # FORM 3: REST/RECOVERY
+                else:
+                    st.markdown("**😴 Registrar Recuperación:**")
                     
-                    with c4:
-                        avg_hr = st.number_input("FC promedio", value=0, min_value=0, max_value=220)
-                    
-                    with c5:
-                        max_hr = st.number_input("FC máxima", value=0, min_value=0, max_value=220)
-                    
-                    with c6:
-                        feeling = st.slider("Sensación (1-10)", 1, 10, 5)
-                    
-                    notes = st.text_area("Notas")
-                    
-                    col_submit, col_cancel = st.columns(2)
-                    
-                    with col_submit:
-                        if st.form_submit_button("💾 Guardar", type="primary"):
-                            db.add_workout(
-                                date=row['date'],
-                                workout_type=row['workout_type'],
-                                distance_km=actual_km,
-                                duration_min=actual_min,
-                                avg_pace=avg_pace,
-                                avg_hr=avg_hr if avg_hr > 0 else None,
-                                max_hr=max_hr if max_hr > 0 else None,
-                                feeling=feeling,
-                                notes=notes
-                            )
-                            st.session_state[f'add_workout_{row["date"]}'] = False
-                            st.success("✅ Entrenamiento guardado!")
-                            st.rerun()
-                    
-                    with col_cancel:
-                        if st.form_submit_button("❌ Cancelar"):
-                            st.session_state[f'add_workout_{row["date"]}'] = False
-                            st.rerun()
+                    with st.form(key=f"workout_form_{row['date']}"):
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            actual_min = st.number_input("Actividad (min)", value=0, min_value=0, step=5, help="Yoga, caminata, etc.")
+                        with c2:
+                            feeling = st.slider("Estado general (1-10)", 1, 10, 7, help="1=Muy cansada, 10=Recuperada")
+                        
+                        c3, c4, c5 = st.columns(3)
+                        with c3:
+                            sleep = st.number_input("Sueño (horas)", value=8.0, step=0.5)
+                        with c4:
+                            knee_pain = st.slider("Dolor rodilla (0-10)", 0, 10, 0)
+                        with c5:
+                            foam_roll = st.checkbox("✅ Foam rolling")
+                        
+                        notes = st.text_area("Notas", placeholder="Estado de recuperación...")
+                        
+                        col_submit, col_cancel = st.columns(2)
+                        with col_submit:
+                            if st.form_submit_button("💾 Guardar", type="primary"):
+                                detail = f"Sueño: {sleep}h. Dolor: {knee_pain}/10. "
+                                if foam_roll:
+                                    detail += "Foam ✅. "
+                                detail += notes
+                                
+                                db.add_workout(
+                                    date=row['date'],
+                                    workout_type=row['workout_type'],
+                                    distance_km=0,
+                                    duration_min=actual_min,
+                                    avg_pace=None,
+                                    avg_hr=None,
+                                    max_hr=None,
+                                    feeling=feeling,
+                                    notes=detail
+                                )
+                                st.session_state[f'add_workout_{row["date"]}'] = False
+                                st.success("✅ Recuperación guardada!")
+                                st.rerun()
+                        with col_cancel:
+                            if st.form_submit_button("❌ Cancelar"):
+                                st.session_state[f'add_workout_{row["date"]}'] = False
+                                st.rerun()
+
 
 with tab2:
     st.markdown("### 📊 Progreso de Entrenamiento")
